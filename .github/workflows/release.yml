@@ -1,0 +1,29 @@
+name: Release
+
+# Publishes to PyPI with Trusted Publishing when a version tag is pushed.
+# One-time setup on pypi.org: add this repository + workflow + environment "pypi" as a
+# trusted publisher for the project "usom-mcp".
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Tag must match the package version
+        run: |
+          version=$(uv run python -c "import usom_mcp; print(usom_mcp.__version__)")
+          test "v$version" = "${GITHUB_REF_NAME}" || { echo "tag ${GITHUB_REF_NAME} != v$version"; exit 1; }
+      - run: uv sync --python 3.12
+      - run: uv run pytest tests/unit -q
+      - run: uv build
+      - uses: pypa/gh-action-pypi-publish@release/v1
